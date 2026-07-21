@@ -29,7 +29,6 @@ def score_protein(row, scorer, config, method, validation_only):
         kwargs["batch_size"] = config.get("scoring", {}).get("exact_batch_size", 32)
     elif method == "sampled_mask":
         score_fn = score_sequence_approximate
-        kwargs["mask_fraction"] = config.get("scoring", {}).get("sampled_mask_fraction", 0.15)
         kwargs["passes"] = config.get("scoring", {}).get("sampled_mask_passes", 7)
     elif method == "naive_onepass":
         score_fn = score_sequence_naive
@@ -43,7 +42,6 @@ def score_protein(row, scorer, config, method, validation_only):
 
     res["uniform_baseline_bits"] = uni_bits
     res["order0_baseline_bits"] = o0_bits
-    res["order1_baseline_bits"] = o0_bits
 
     res["surprisal_ratio_order0"] = res["total_surprisal_bits"] / o0_bits if o0_bits > 0 else 0
     res["surprisal_ratio_uniform"] = res["total_surprisal_bits"] / uni_bits if uni_bits > 0 else 0
@@ -143,6 +141,9 @@ def main():
             protein_records.append(p_record)
 
             for i in range(row["sequence_length"]):
+                w_id = res.get("residue_window_ids", [0]*row["sequence_length"])[i] if res.get("windowed") else 0
+                dist_edge = res.get("residue_distances_to_edge", [-1]*row["sequence_length"])[i] if res.get("windowed") else -1
+
                 residue_records.append({
                     "uniprot_id": uid,
                     "gene_symbol": row["gene_symbol"],
@@ -150,8 +151,8 @@ def main():
                     "reference_residue": row["sequence"][i],
                     "surprisal_bits": res["residue_surprisals"][i],
                     "probability": res["residue_probabilities"][i],
-                    "window_id": i // config.get("sequence", {}).get("maximum_length", 900) if res["windowed"] else 0,
-                    "distance_from_window_edge": -1
+                    "window_id": w_id,
+                    "distance_from_window_edge": dist_edge
                 })
 
             if len(protein_records) % 10 == 0:

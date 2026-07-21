@@ -25,6 +25,3 @@ def order0_baseline(sequence: str, background: Dict[str, float] = HUMAN_BACKGROU
         else:
             surprisal -= math.log2(1.0 / 20.0)
     return surprisal
-
-def order1_baseline(sequence: str) -> float:
-    return order0_baseline(sequence)

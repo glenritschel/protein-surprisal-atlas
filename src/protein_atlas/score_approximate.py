@@ -4,22 +4,16 @@ import random
 from typing import Dict, Any
 from src.protein_atlas.esm_model import ESM2Scorer
 
-def score_sequence_approximate(scorer: ESM2Scorer, sequence: str, mask_fraction: float = 0.15, passes: int = 7) -> Dict[str, Any]:
+def score_sequence_approximate(scorer: ESM2Scorer, sequence: str, passes: int = 7) -> Dict[str, Any]:
     L = len(sequence)
     token_ids = scorer.tokenizer(sequence, add_special_tokens=True, return_tensors="pt")["input_ids"][0]
 
     surprisals = [None] * L
     probabilities = [None] * L
 
-    all_positions = list(range(L))
-    random.shuffle(all_positions)
-
-    k = passes
-    fold_size = math.ceil(L / k)
-
     groups = []
-    for i in range(k):
-        group = all_positions[i*fold_size : (i+1)*fold_size]
+    for i in range(passes):
+        group = [pos for pos in range(L) if pos % passes == i]
         if group:
             groups.append(group)
 

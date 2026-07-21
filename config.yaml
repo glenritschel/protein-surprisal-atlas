@@ -28,8 +28,8 @@ baselines:
   background: human_proteome     # human_proteome | uniform
 
 pilot:
-  target_size: 10
-  exact_validation_size: 10
+  target_size: 500
+  exact_validation_size: 50
 
 controls:
   shuffled_replicates: 10

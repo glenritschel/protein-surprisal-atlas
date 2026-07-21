@@ -1,5 +1,7 @@
-from typing import Dict, Any, Callable
-from src.protein_atlas.esm_model import ESM2Scorer
+from typing import Dict, Any, Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.protein_atlas.esm_model import ESM2Scorer
 
 def get_windows(sequence: str, max_len: int = 900, overlap: int = 100):
     L = len(sequence)
@@ -17,7 +19,7 @@ def get_windows(sequence: str, max_len: int = 900, overlap: int = 100):
 
     return windows
 
-def score_sequence_windowed(scorer: ESM2Scorer, sequence: str, score_fn: Callable, max_len: int = 900, overlap: int = 100, merge_rule: str = "central", **kwargs) -> Dict[str, Any]:
+def score_sequence_windowed(scorer: 'ESM2Scorer', sequence: str, score_fn: Callable, max_len: int = 900, overlap: int = 100, merge_rule: str = "central", **kwargs) -> Dict[str, Any]:
     L = len(sequence)
     windows = get_windows(sequence, max_len, overlap)
 
@@ -30,13 +32,14 @@ def score_sequence_windowed(scorer: ESM2Scorer, sequence: str, score_fn: Callabl
     merged_surprisals = [None] * L
     merged_probs = [None] * L
     max_dist_to_edge = [-1] * L
+    window_ids = [0] * L
 
     sum_surprisals = [0.0] * L
     count_surprisals = [0] * L
 
     method = None
 
-    for (start, end, subseq) in windows:
+    for window_idx, (start, end, subseq) in enumerate(windows):
         res = score_fn(scorer, subseq, **kwargs)
         method = res["scoring_method"]
         sub_surp = res["residue_surprisals"]
@@ -51,9 +54,13 @@ def score_sequence_windowed(scorer: ESM2Scorer, sequence: str, score_fn: Callabl
             if merge_rule == "central":
                 if dist > max_dist_to_edge[global_pos]:
                     max_dist_to_edge[global_pos] = dist
+                    window_ids[global_pos] = window_idx
                     merged_surprisals[global_pos] = sub_surp[i]
                     merged_probs[global_pos] = sub_prob[i]
             elif merge_rule == "average":
+                if dist > max_dist_to_edge[global_pos]:
+                    max_dist_to_edge[global_pos] = dist
+                    window_ids[global_pos] = window_idx
                 sum_surprisals[global_pos] += sub_surp[i]
                 count_surprisals[global_pos] += 1
 
@@ -73,6 +80,8 @@ def score_sequence_windowed(scorer: ESM2Scorer, sequence: str, score_fn: Callabl
         "bits_per_residue": total_surprisal / L,
         "residue_surprisals": merged_surprisals,
         "residue_probabilities": merged_probs,
+        "residue_window_ids": window_ids,
+        "residue_distances_to_edge": max_dist_to_edge,
         "scoring_method": method,
         "windowed": True,
         "number_of_windows": len(windows)

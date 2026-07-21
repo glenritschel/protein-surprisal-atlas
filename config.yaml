@@ -12,7 +12,6 @@ scoring:
   # exact scoring batches the L masked variants of one protein together
   exact_batch_size: 32
   # sampled-masking approximation
-  sampled_mask_fraction: 0.15
   sampled_mask_passes: 7
 
 sequence:
@@ -25,7 +24,7 @@ sequence:
 
 baselines:
   use_order0: true
-  use_order1: true
+  use_order1: false
   background: human_proteome     # human_proteome | uniform
 
 pilot:

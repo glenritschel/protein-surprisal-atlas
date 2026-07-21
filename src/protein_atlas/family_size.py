@@ -11,7 +11,7 @@ def get_uniref_cluster_sizes(uniprot_id: str) -> Dict[str, Any]:
     uniref50_id = None
 
     def fetch_size(identity: str) -> Tuple[Optional[str], Optional[int]]:
-        u_url = f"https://rest.uniprot.org/uniref/search?query=(member:{uniprot_id})AND(identity:{identity})&fields=id,count,name"
+        u_url = f"https://rest.uniprot.org/uniref/search?query=(uniprot_id:{uniprot_id})AND(identity:{identity})&fields=id,count,name"
 
         retries = 3
         backoff = 1
@@ -22,6 +22,10 @@ def get_uniref_cluster_sizes(uniprot_id: str) -> Dict[str, Any]:
                     d = r.json()
                     results = d.get('results', [])
                     if results:
+                        import logging
+                        if not hasattr(fetch_size, "has_logged"):
+                            logging.info(f"Raw JSON response for {uniprot_id} identity {identity}: {d}")
+                            fetch_size.has_logged = True
                         # Take the first matched cluster
                         cluster = results[0]
                         return cluster.get('id'), cluster.get('memberCount')

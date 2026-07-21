@@ -1,0 +1,43 @@
+project:
+  seed: 42
+  output_format: parquet
+
+model:
+  name: facebook/esm2_t12_35M_UR50D
+  device: auto
+  precision: float32
+  scoring_method: sampled_mask   # exact | sampled_mask | naive_onepass
+
+scoring:
+  # exact scoring batches the L masked variants of one protein together
+  exact_batch_size: 32
+  # sampled-masking approximation
+  sampled_mask_fraction: 0.15
+  sampled_mask_passes: 7
+
+sequence:
+  maximum_length: 900
+  window_overlap: 100
+  window_merge_rule: central   # central | average
+  ambiguous_residue_policy: flag
+  canonical_only: true
+  reviewed_only: true
+
+baselines:
+  use_order0: true
+  use_order1: true
+  background: human_proteome     # human_proteome | uniform
+
+pilot:
+  target_size: 500
+  exact_validation_size: 50
+
+controls:
+  shuffled_replicates: 10
+  random_replicates: 10
+  preserve_composition: true
+
+statistics:
+  multiple_testing_method: fdr_bh
+  significance_level: 0.05
+  family_cluster_variable: uniref50_cluster_id   # for cluster-robust / mixed models

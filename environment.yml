@@ -1,0 +1,27 @@
+name: protein-surprisal-atlas
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch
+  - cpuonly
+  - pip
+  - pip:
+    - transformers
+    - fair-esm
+    - pandas
+    - numpy
+    - scipy
+    - scikit-learn
+    - statsmodels
+    - biopython
+    - pyarrow
+    - requests
+    - matplotlib
+    - tqdm
+    - pydantic
+    - pyyaml
+    - pytest
+    - jupyterlab

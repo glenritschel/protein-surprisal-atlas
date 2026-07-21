@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# -----------------
+# Added for protein-surprisal-atlas
+# -----------------
+data/
+results/
+models/
+__pycache__/
+*.pyc
+*.tsv
+*.parquet
+*.json

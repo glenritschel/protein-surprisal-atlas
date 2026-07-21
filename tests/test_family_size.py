@@ -9,14 +9,14 @@ def test_get_uniref_cluster_sizes_live_mocked():
     # Mock UniRef90
     responses.add(
         responses.GET,
-        "https://rest.uniprot.org/uniref/search?query=(member:P12345)AND(identity:0.9)&fields=id,count,name",
+        "https://rest.uniprot.org/uniref/search?query=(uniprot_id:P12345)AND(identity:0.9)&fields=id,count,name",
         json={"results": [{"id": "UniRef90_P00000", "memberCount": 5}]},
         status=200
     )
     # Mock UniRef50
     responses.add(
         responses.GET,
-        "https://rest.uniprot.org/uniref/search?query=(member:P12345)AND(identity:0.5)&fields=id,count,name",
+        "https://rest.uniprot.org/uniref/search?query=(uniprot_id:P12345)AND(identity:0.5)&fields=id,count,name",
         json={"results": [{"id": "UniRef50_P00000", "memberCount": 150}]},
         status=200
     )

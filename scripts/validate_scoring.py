@@ -60,7 +60,6 @@ def main():
     exact_path = f"{tables_dir}/validation_protein_scores_exact.{output_format}"
     approx_path = f"{tables_dir}/pilot_protein_scores_sampled_mask.{output_format}"
 
-    # Wait, the validation ones might have been scored as validation...
     if output_format == "parquet":
         exact_df = pd.read_parquet(exact_path) if Path(exact_path).exists() else None
         approx_df = pd.read_parquet(approx_path) if Path(approx_path).exists() else None

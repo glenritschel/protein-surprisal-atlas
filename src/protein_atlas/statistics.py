@@ -4,6 +4,7 @@ import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 from typing import Tuple
 import scipy.stats
+import logging
 
 def fit_distribution_models(df: pd.DataFrame, cluster_var: str = "uniref50_cluster_id", add_residuals: bool = True) -> Tuple[pd.DataFrame, dict]:
     """
@@ -11,19 +12,22 @@ def fit_distribution_models(df: pd.DataFrame, cluster_var: str = "uniref50_clust
     Calculates family-clustered sensitivity.
     """
 
+    d = df.dropna(subset=['bits_per_residue', 'sequence_length', 'log_family_size']).copy()
+
     # Primary Models: bits_per_residue
-    model_a = smf.ols("bits_per_residue ~ sequence_length", data=df).fit()
-    model_b = smf.ols("bits_per_residue ~ sequence_length + log_family_size", data=df).fit()
+    model_a = smf.ols("bits_per_residue ~ sequence_length", data=d).fit()
+    model_b = smf.ols("bits_per_residue ~ sequence_length + log_family_size", data=d).fit()
 
     # Secondary Models: total_surprisal_bits (diagnostic)
-    total_model_a = smf.ols("total_surprisal_bits ~ sequence_length", data=df).fit()
-    total_model_b = smf.ols("total_surprisal_bits ~ sequence_length + log_family_size", data=df).fit()
+    total_model_a = smf.ols("total_surprisal_bits ~ sequence_length", data=d).fit()
+    total_model_b = smf.ols("total_surprisal_bits ~ sequence_length + log_family_size", data=d).fit()
 
     # Clustered Model B
     try:
-        model_b_clustered = smf.ols("bits_per_residue ~ sequence_length + log_family_size", data=df).fit(cov_type='cluster', cov_kwds={'groups': df[cluster_var]})
+        model_b_clustered = smf.ols("bits_per_residue ~ sequence_length + log_family_size", data=d).fit(cov_type='cluster', cov_kwds={'groups': d[cluster_var]})
         clustered_pvalues = model_b_clustered.pvalues.to_dict()
     except Exception as e:
+        logging.warning(f"Clustered model fit failed: {e}")
         clustered_pvalues = None
 
     # Multiple testing correction using Benjamini-Hochberg FDR
@@ -33,8 +37,8 @@ def fit_distribution_models(df: pd.DataFrame, cluster_var: str = "uniref50_clust
     adjusted_pvalues = dict(zip(model_b.pvalues.index, pvals_corrected))
 
     if add_residuals:
-        df['length_adjusted_surprisal'] = model_a.resid
-        df['length_and_family_adjusted_surprisal'] = model_b.resid
+        df.loc[d.index, 'length_adjusted_surprisal'] = model_a.resid
+        df.loc[d.index, 'length_and_family_adjusted_surprisal'] = model_b.resid
 
     # Spearman correlation
     spearman_corr = None

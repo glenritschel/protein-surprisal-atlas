@@ -3,6 +3,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 from typing import Tuple
+import scipy.stats
 
 def fit_distribution_models(df: pd.DataFrame, cluster_var: str = "uniref50_cluster_id", add_residuals: bool = True) -> Tuple[pd.DataFrame, dict]:
     """
@@ -10,15 +11,17 @@ def fit_distribution_models(df: pd.DataFrame, cluster_var: str = "uniref50_clust
     Calculates family-clustered sensitivity.
     """
 
-    # Model A
-    model_a = smf.ols("total_surprisal_bits ~ sequence_length", data=df).fit()
+    # Primary Models: bits_per_residue
+    model_a = smf.ols("bits_per_residue ~ sequence_length", data=df).fit()
+    model_b = smf.ols("bits_per_residue ~ sequence_length + log_family_size", data=df).fit()
 
-    # Model B
-    model_b = smf.ols("total_surprisal_bits ~ sequence_length + log_family_size", data=df).fit()
+    # Secondary Models: total_surprisal_bits (diagnostic)
+    total_model_a = smf.ols("total_surprisal_bits ~ sequence_length", data=df).fit()
+    total_model_b = smf.ols("total_surprisal_bits ~ sequence_length + log_family_size", data=df).fit()
 
     # Clustered Model B
     try:
-        model_b_clustered = smf.ols("total_surprisal_bits ~ sequence_length + log_family_size", data=df).fit(cov_type='cluster', cov_kwds={'groups': df[cluster_var]})
+        model_b_clustered = smf.ols("bits_per_residue ~ sequence_length + log_family_size", data=df).fit(cov_type='cluster', cov_kwds={'groups': df[cluster_var]})
         clustered_pvalues = model_b_clustered.pvalues.to_dict()
     except Exception as e:
         clustered_pvalues = None
@@ -33,10 +36,20 @@ def fit_distribution_models(df: pd.DataFrame, cluster_var: str = "uniref50_clust
         df['length_adjusted_surprisal'] = model_a.resid
         df['length_and_family_adjusted_surprisal'] = model_b.resid
 
+    # Spearman correlation
+    spearman_corr = None
+    if 'bits_per_residue' in df.columns and 'log_family_size' in df.columns:
+        valid_df = df[['bits_per_residue', 'log_family_size']].dropna()
+        if len(valid_df) > 0:
+            spearman_corr, _ = scipy.stats.spearmanr(valid_df['bits_per_residue'], valid_df['log_family_size'])
+
     results = {
         "model_a_r2": model_a.rsquared,
         "model_b_r2": model_b.rsquared,
         "variance_explained_by_family": model_b.rsquared - model_a.rsquared,
+        "total_model_a_r2": total_model_a.rsquared,
+        "total_model_b_r2": total_model_b.rsquared,
+        "spearman_corr_bits_vs_family": spearman_corr,
         "model_b_params": model_b.params.to_dict(),
         "model_b_pvalues": model_b.pvalues.to_dict(),
         "model_b_adjusted_pvalues_fdr_bh": adjusted_pvalues,

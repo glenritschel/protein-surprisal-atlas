@@ -21,13 +21,17 @@ from src.protein_atlas.esm_model import ESM2Scorer
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-def get_controls_scores(df: pd.DataFrame, scorer: ESM2Scorer) -> pd.DataFrame:
+def get_controls_scores(df: pd.DataFrame, scorer: ESM2Scorer, config: dict) -> pd.DataFrame:
     """Generate and score controls for a subset of proteins (e.g. top 10) to save time."""
     sub_df = df.head(10).copy()
     results = []
 
+    base_seed = config.get("project", {}).get("seed", 42)
+    shuffled_replicates = config.get("controls", {}).get("shuffled_replicates", 10)
+
     import torch
     from src.protein_atlas.score_approximate import score_sequence_approximate
+    import hashlib
 
     for _, row in sub_df.iterrows():
         seq = row['sequence']
@@ -37,10 +41,17 @@ def get_controls_scores(df: pd.DataFrame, scorer: ESM2Scorer) -> pd.DataFrame:
         nat_res = score_sequence_approximate(scorer, seq)
         results.append({'uniprot_id': uid, 'type': 'natural', 'total_surprisal_bits': nat_res['total_surprisal_bits']})
 
+        def get_seed(control_type, rep=0):
+            # Deterministic pseudo-random seed per sequence + control type + replicate
+            hash_input = f"{uid}_{control_type}_{rep}".encode('utf-8')
+            uid_hash = int(hashlib.md5(hash_input).hexdigest(), 16) % (2**31)
+            return (base_seed + uid_hash) % (2**31)
+
         # Shuffled
-        shuf = shuffle_sequence(seq)
-        shuf_res = score_sequence_approximate(scorer, shuf)
-        results.append({'uniprot_id': uid, 'type': 'shuffled', 'total_surprisal_bits': shuf_res['total_surprisal_bits']})
+        for i in range(shuffled_replicates):
+            shuf = shuffle_sequence(seq, seed=get_seed("shuffled", i))
+            shuf_res = score_sequence_approximate(scorer, shuf)
+            results.append({'uniprot_id': uid, 'type': 'shuffled', 'total_surprisal_bits': shuf_res['total_surprisal_bits'], 'replicate': i})
 
         # Reversed
         rev = reverse_sequence(seq)
@@ -48,14 +59,16 @@ def get_controls_scores(df: pd.DataFrame, scorer: ESM2Scorer) -> pd.DataFrame:
         results.append({'uniprot_id': uid, 'type': 'reversed', 'total_surprisal_bits': rev_res['total_surprisal_bits']})
 
         # Random Uniform
-        rand_uni = generate_random_uniform(len(seq))
-        rand_uni_res = score_sequence_approximate(scorer, rand_uni)
-        results.append({'uniprot_id': uid, 'type': 'random_uniform', 'total_surprisal_bits': rand_uni_res['total_surprisal_bits']})
+        for i in range(shuffled_replicates):
+            rand_uni = generate_random_uniform(len(seq), seed=get_seed("random_uniform", i))
+            rand_uni_res = score_sequence_approximate(scorer, rand_uni)
+            results.append({'uniprot_id': uid, 'type': 'random_uniform', 'total_surprisal_bits': rand_uni_res['total_surprisal_bits'], 'replicate': i})
 
         # Random Background
-        rand_bg = generate_random_background(len(seq))
-        rand_bg_res = score_sequence_approximate(scorer, rand_bg)
-        results.append({'uniprot_id': uid, 'type': 'random_background', 'total_surprisal_bits': rand_bg_res['total_surprisal_bits']})
+        for i in range(shuffled_replicates):
+            rand_bg = generate_random_background(len(seq), seed=get_seed("random_background", i))
+            rand_bg_res = score_sequence_approximate(scorer, rand_bg)
+            results.append({'uniprot_id': uid, 'type': 'random_background', 'total_surprisal_bits': rand_bg_res['total_surprisal_bits'], 'replicate': i})
 
     return pd.DataFrame(results)
 
@@ -135,7 +148,7 @@ def main():
 
     scorer = ESM2Scorer(model_name=model_name, device=device, precision=precision)
 
-    controls_df = get_controls_scores(df, scorer)
+    controls_df = get_controls_scores(df, scorer, config)
     controls_df.to_csv(f"{tables_dir}/control_sequence_comparisons.csv", index=False)
     plot_controls(controls_df, fig_dir)
 

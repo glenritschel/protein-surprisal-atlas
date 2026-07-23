@@ -82,23 +82,27 @@ def join_gnomad_to_pilot(pilot_df, gnomad_ens_gene, gnomad_sym_gene, gnomad_tran
         # 1. Primary join: by gene_symbol to gene-level table
         sym = row['first_gene_symbol']
         if sym in gnomad_sym_gene['gene'].values:
-            match_row = gnomad_sym_gene[gnomad_sym_gene['gene'] == sym].iloc[0]
-            merged.at[idx, 'gnomad_loeuf'] = match_row['gnomad_loeuf']
-            merged.at[idx, 'gnomad_pli'] = match_row['gnomad_pli']
-            merged.at[idx, 'gnomad_join_method'] = 'gene_symbol'
-            matched = True
-            continue
+            matches = gnomad_sym_gene[gnomad_sym_gene['gene'] == sym]
+            if len(matches) > 0:
+                match_row = matches.iloc[0]
+                merged.at[idx, 'gnomad_loeuf'] = match_row['gnomad_loeuf']
+                merged.at[idx, 'gnomad_pli'] = match_row['gnomad_pli']
+                merged.at[idx, 'gnomad_join_method'] = 'gene_symbol'
+                matched = True
+                continue
 
         # 2. Fallback join: ENST transcript match
         ensts = extract_base_ensts(row.get('Ensembl', ''))
         for enst in ensts:
             if enst in gnomad_transcript['transcript'].values:
-                match_row = gnomad_transcript[gnomad_transcript['transcript'] == enst].iloc[0]
-                merged.at[idx, 'gnomad_loeuf'] = match_row['gnomad_loeuf']
-                merged.at[idx, 'gnomad_pli'] = match_row['gnomad_pli']
-                merged.at[idx, 'gnomad_join_method'] = 'transcript'
-                matched = True
-                break
+                matches = gnomad_transcript[gnomad_transcript['transcript'] == enst]
+                if len(matches) > 0:
+                    match_row = matches.iloc[0]
+                    merged.at[idx, 'gnomad_loeuf'] = match_row['gnomad_loeuf']
+                    merged.at[idx, 'gnomad_pli'] = match_row['gnomad_pli']
+                    merged.at[idx, 'gnomad_join_method'] = 'transcript'
+                    matched = True
+                    break
 
     merged.drop(columns=['first_gene_symbol'], errors='ignore', inplace=True)
     return merged

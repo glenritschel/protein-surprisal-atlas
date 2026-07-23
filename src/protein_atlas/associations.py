@@ -11,7 +11,7 @@ def fit_association_models(df: pd.DataFrame) -> pd.DataFrame:
     baseline_vars = ['sequence_length', 'log_family_size', 'low_complexity_fraction']
     target = 'bits_per_residue'
 
-    annotations = ['gnomad_loeuf', 'gnomad_pli', 'disorder_fraction']
+    annotations = ['gnomad_loeuf', 'gnomad_pli', 'disorder_fraction', 'depmap_gene_effect']
 
     results = []
 

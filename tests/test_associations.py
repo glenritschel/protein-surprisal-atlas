@@ -23,6 +23,10 @@ def test_fit_association_models():
     df['gnomad_loeuf'] = np.random.uniform(0, 2, n)
     df['bits_per_residue'] += 1.5 * df['gnomad_loeuf']
 
+    # Introduce a negative association with depmap_gene_effect
+    df['depmap_gene_effect'] = np.random.uniform(-2, 0, n)
+    df['bits_per_residue'] += 1.0 * df['depmap_gene_effect'] # depmap effect is negative, this reduces bits_per_residue
+
     # We leave gnomad_pli missing for testing
 
     res = fit_association_models(df)
@@ -44,6 +48,11 @@ def test_fit_association_models():
     assert loeuf_row['coefficient'] > 0
     assert loeuf_row['n'] == 100
 
+    depmap_row = res[res['annotation'] == 'depmap_gene_effect'].iloc[0]
+    assert depmap_row['coefficient'] > 0
+    assert depmap_row['n'] == 100
+
     # Delta R2 should be positive
     assert disorder_row['delta_r2'] > 0
     assert loeuf_row['delta_r2'] > 0
+    assert depmap_row['delta_r2'] > 0

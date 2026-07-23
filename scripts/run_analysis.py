@@ -12,6 +12,7 @@ from src.protein_atlas.plots import (
     plot_background_vs_model,
     plot_surprisal_ratio,
     plot_family_size_confound,
+    plot_residual_vs_depmap_effect,
     plot_residue_profile,
     plot_controls
 )
@@ -126,6 +127,7 @@ def main():
     plot_background_vs_model(df, fig_dir)
     plot_surprisal_ratio(df, fig_dir)
     plot_family_size_confound(df, fig_dir)
+    plot_residual_vs_depmap_effect(df, fig_dir, 11)
 
     def find_exact(gene):
         for g in df['gene_symbol'].dropna().unique():

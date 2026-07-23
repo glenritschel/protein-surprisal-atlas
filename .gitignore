@@ -228,3 +228,6 @@ __pycache__/
 *.tsv
 *.parquet
 *.json
+
+*Zone.Identifier
+*:Zone.Identifier

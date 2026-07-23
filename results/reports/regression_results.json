@@ -1,0 +1,28 @@
+{
+  "model_a_r2": 0.0005989930420492451,
+  "model_b_r2": 0.030650882234475985,
+  "variance_explained_by_family": 0.03005188919242674,
+  "total_model_a_r2": 0.9511493440213207,
+  "total_model_b_r2": 0.951181513898774,
+  "spearman_corr_bits_vs_family": -0.1369360047787814,
+  "model_b_params": {
+    "Intercept": 3.6436988991968047,
+    "sequence_length": 0.00010711250895479515,
+    "log_family_size": -0.0615101518796572
+  },
+  "model_b_pvalues": {
+    "Intercept": 1.273515396508905e-181,
+    "sequence_length": 0.040957873670073724,
+    "log_family_size": 9.88353540548689e-05
+  },
+  "model_b_adjusted_pvalues_fdr_bh": {
+    "Intercept": 3.8205461895267147e-181,
+    "sequence_length": 0.040957873670073724,
+    "log_family_size": 0.00014825303108230336
+  },
+  "model_b_clustered_pvalues": {
+    "Intercept": 3.684982567179663e-306,
+    "sequence_length": 0.18160592900066141,
+    "log_family_size": 0.006721202662213668
+  }
+}

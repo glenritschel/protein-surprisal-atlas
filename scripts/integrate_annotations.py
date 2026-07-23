@@ -2,6 +2,7 @@ import os
 import yaml
 import pandas as pd
 from src.protein_atlas.integrate_gnomad import fetch_gnomad_metrics, process_gnomad_metrics, join_gnomad_to_pilot
+from src.protein_atlas.integrate_depmap import fetch_depmap_data, process_depmap_data, join_depmap_to_pilot
 from src.protein_atlas.annotate_disorder import get_disorder_fractions
 from src.protein_atlas.annotate_lowcomplexity import compute_low_complexity_fraction
 
@@ -35,6 +36,12 @@ def main():
     gnomad_ens_gene, gnomad_sym_gene, gnomad_transcript = process_gnomad_metrics(gnomad_fp)
     df = join_gnomad_to_pilot(df, gnomad_ens_gene, gnomad_sym_gene, gnomad_transcript)
 
+    # 4. DepMap Gene Effect
+    print("Integrating DepMap gene effect...")
+    depmap_effect_path, depmap_effect_sha256, depmap_essential_path, depmap_essential_sha256, depmap_label, depmap_doi = fetch_depmap_data()
+    depmap_df = process_depmap_data(depmap_effect_path, depmap_essential_path)
+    df = join_depmap_to_pilot(df, depmap_df)
+
     # Write output
     output_file = "results/tables/pilot_annotated.parquet"
     print(f"Writing annotated dataset to {output_file}...")
@@ -50,6 +57,7 @@ def main():
     disorder_present = df['disorder_fraction'].notna().sum()
     loeuf_present = df['gnomad_loeuf'].notna().sum()
     pli_present = df['gnomad_pli'].notna().sum()
+    depmap_present = df['depmap_gene_effect'].notna().sum()
 
     join_counts = df['gnomad_join_method'].value_counts().to_dict() if 'gnomad_join_method' in df.columns else {}
 
@@ -61,7 +69,8 @@ def main():
         f.write(f"- **Low Complexity Fraction**: {lowcomp_present} ({lowcomp_present/n_total*100:.1f}%)\n")
         f.write(f"- **Disorder Fraction**: {disorder_present} ({disorder_present/n_total*100:.1f}%)\n")
         f.write(f"- **gnomAD LOEUF**: {loeuf_present} ({loeuf_present/n_total*100:.1f}%)\n")
-        f.write(f"- **gnomAD pLI**: {pli_present} ({pli_present/n_total*100:.1f}%)\n\n")
+        f.write(f"- **gnomAD pLI**: {pli_present} ({pli_present/n_total*100:.1f}%)\n")
+        f.write(f"- **DepMap Gene Effect**: {depmap_present} ({depmap_present/n_total*100:.1f}%)\n\n")
 
         f.write("## gnomAD Join Methods\n")
         for method, count in join_counts.items():
@@ -71,6 +80,12 @@ def main():
         f.write(f"- **gnomAD URL**: {url}\n")
         f.write(f"- **gnomAD Version**: {version}\n")
         f.write(f"- **gnomAD SHA256**: {sha256}\n")
+        f.write(f"- **DepMap URL (Effect)**: {DEPMAP_RELEASE_URL_EFFECT if 'DEPMAP_RELEASE_URL_EFFECT' in globals() else 'https://ndownloader.figshare.com/files/51064667'}\n")
+        f.write(f"- **DepMap URL (Essentials)**: {DEPMAP_RELEASE_URL_ESSENTIAL if 'DEPMAP_RELEASE_URL_ESSENTIAL' in globals() else 'https://ndownloader.figshare.com/files/51064916'}\n")
+        f.write(f"- **DepMap Label**: {depmap_label}\n")
+        f.write(f"- **DepMap DOI**: {depmap_doi}\n")
+        f.write(f"- **DepMap SHA256 (Effect)**: {depmap_effect_sha256}\n")
+        f.write(f"- **DepMap SHA256 (Essentials)**: {depmap_essential_sha256}\n")
 
     print("Integration complete.")
 

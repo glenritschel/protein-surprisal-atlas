@@ -66,6 +66,19 @@ def plot_family_size_confound(df: pd.DataFrame, output_dir: str):
         plt.savefig(f"{output_dir}/fig7_confound.pdf")
     plt.close()
 
+def plot_residual_vs_depmap_effect(df: pd.DataFrame, output_dir: str, fignum: int = 11):
+    fig, ax = plt.subplots(figsize=(8, 6))
+    if 'depmap_gene_effect' in df.columns and 'length_and_family_adjusted_surprisal' in df.columns:
+        subset = df[['depmap_gene_effect', 'length_and_family_adjusted_surprisal']].dropna()
+        ax.scatter(subset['depmap_gene_effect'], subset['length_and_family_adjusted_surprisal'], alpha=0.6, s=20)
+        ax.set_xlabel("DepMap Gene Effect (Mean)")
+        ax.set_ylabel("Residual Surprisal (Bits)")
+        ax.set_title("Residual Surprisal vs DepMap Gene Effect")
+        plt.tight_layout()
+        plt.savefig(f"{output_dir}/fig{fignum}_residual_vs_depmap_effect.png", dpi=300)
+        plt.savefig(f"{output_dir}/fig{fignum}_residual_vs_depmap_effect.pdf")
+    plt.close()
+
 def plot_residue_profile(res_df: pd.DataFrame, gene: str, output_dir: str, fignum: int):
     gene_df = res_df[res_df['gene_symbol'] == gene]
     if len(gene_df) == 0:

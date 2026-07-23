@@ -28,6 +28,9 @@ def test_family_size_per_residue_model():
         'uniref50_cluster_id': np.random.randint(1, 50, n) # dummy cluster ids
     })
 
+    # Inject a missing value to test robust clustered p-values logic
+    df.loc[0, 'log_family_size'] = np.nan
+
     df_out, results = fit_distribution_models(df)
 
     # Check that variance explained by family is > 0
@@ -47,3 +50,7 @@ def test_family_size_per_residue_model():
     # Check that secondary total models are returned
     assert 'total_model_a_r2' in results
     assert 'total_model_b_r2' in results
+
+    # Check clustered pvalues
+    assert results['model_b_clustered_pvalues'] is not None
+    assert 'log_family_size' in results['model_b_clustered_pvalues']

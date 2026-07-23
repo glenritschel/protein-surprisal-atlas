@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import seaborn as sns
+import re
 
 def plot_surprisal_distribution(df: pd.DataFrame, output_dir: str):
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -82,8 +83,12 @@ def plot_residue_profile(res_df: pd.DataFrame, gene: str, output_dir: str, fignu
     ax.set_title(f"Residue-Level Surprisal Profile: {gene}")
     ax.legend()
     plt.tight_layout()
-    plt.savefig(f"{output_dir}/fig{fignum}_{gene}_profile.png", dpi=300)
-    plt.savefig(f"{output_dir}/fig{fignum}_{gene}_profile.pdf")
+
+    primary = str(gene).split()[0]
+    safe = re.sub(r'[^A-Za-z0-9_.-]', '_', primary)
+
+    plt.savefig(f"{output_dir}/fig{fignum}_{safe}_profile.png", dpi=300)
+    plt.savefig(f"{output_dir}/fig{fignum}_{safe}_profile.pdf")
     plt.close()
 
 def plot_controls(controls_df: pd.DataFrame, output_dir: str):

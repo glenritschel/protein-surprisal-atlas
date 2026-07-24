@@ -62,6 +62,8 @@ def get_uniref_cluster_sizes(uniprot_id: str) -> Dict[str, Any]:
 
 def add_family_sizes(df, max_workers=4):
     import os
+    import json
+    import threading
     if os.environ.get("FAST_MOCK_UNIREF") == "1":
         import numpy as np
         df['uniref50_cluster_id'] = "UR50_" + df['uniprot_id']
@@ -70,13 +72,50 @@ def add_family_sizes(df, max_workers=4):
         df['log_family_size'] = np.log(df['uniref50_cluster_size'] + 1)
         return df
 
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     import tqdm
 
-    results = []
+    cache_file = "data/external/uniref_cache.json"
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+    cache = {}
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r') as f:
+                cache = json.load(f)
+        except json.JSONDecodeError:
+            cache = {}
+
+    cache_lock = threading.Lock()
+
+    def save_cache_safely():
+        with cache_lock:
+            with open(cache_file, 'w') as f:
+                json.dump(cache, f)
+
+    def fetch_and_cache(uid):
+        if uid in cache:
+            return uid, cache[uid]
+        res = get_uniref_cluster_sizes(uid)
+        with cache_lock:
+            cache[uid] = res
+        return uid, res
+
+    to_fetch = df['uniprot_id'].tolist()
+    results_map = {}
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for res in tqdm.tqdm(executor.map(get_uniref_cluster_sizes, df['uniprot_id']), total=len(df)):
-            results.append(res)
+        futures = {executor.submit(fetch_and_cache, uid): uid for uid in to_fetch}
+        for i, future in enumerate(tqdm.tqdm(as_completed(futures), total=len(to_fetch))):
+            uid, res = future.result()
+            results_map[uid] = res
+            # Save cache periodically to survive interruption
+            if i > 0 and i % 100 == 0:
+                save_cache_safely()
+
+    # Final save
+    save_cache_safely()
+
+    results = [results_map[uid] for uid in to_fetch]
 
     df_res = pd.DataFrame(results)
     for col in df_res.columns:

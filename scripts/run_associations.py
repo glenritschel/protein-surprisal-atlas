@@ -4,8 +4,24 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from src.protein_atlas.associations import fit_association_models
 
+import argparse
+
 def main():
-    input_file = "results/tables/pilot_annotated.parquet"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scope", choices=["pilot", "proteome"], default="pilot", help="Scope of the associations")
+    args = parser.parse_args()
+
+    if args.scope == "pilot":
+        input_file = "results/tables/pilot_annotated.parquet"
+        out_table = "results/tables/association_results.csv"
+        out_md = "results/reports/associations.md"
+        out_fig_prefix = "results/figures/fig"
+    else:
+        input_file = "results/tables/proteome_annotated.parquet"
+        out_table = "results/tables/proteome_association_results.csv"
+        out_md = "results/reports/proteome_associations.md"
+        out_fig_prefix = "results/figures/proteome_fig"
+
     if not os.path.exists(input_file):
         raise FileNotFoundError(f"{input_file} not found.")
 
@@ -29,13 +45,11 @@ def main():
     res_df = fit_association_models(df)
 
     # Save results table
-    out_table = "results/tables/association_results.csv"
     os.makedirs(os.path.dirname(out_table), exist_ok=True)
     res_df.to_csv(out_table, index=False)
     print(f"Saved association table to {out_table}")
 
     # Write reports
-    out_md = "results/reports/associations.md"
     os.makedirs(os.path.dirname(out_md), exist_ok=True)
     with open(out_md, 'w') as f:
         f.write("# Biological Association Analyses\n\n")
@@ -69,8 +83,8 @@ def main():
         plt.xlabel('gnomAD LOEUF')
         plt.ylabel('Residual (length+family adjusted bits/res)')
         plt.tight_layout()
-        plt.savefig('results/figures/fig8_residual_vs_gnomad_loeuf.png', dpi=300)
-        plt.savefig('results/figures/fig8_residual_vs_gnomad_loeuf.pdf')
+        plt.savefig(f'{out_fig_prefix}8_residual_vs_gnomad_loeuf.png', dpi=300)
+        plt.savefig(f'{out_fig_prefix}8_residual_vs_gnomad_loeuf.pdf')
         plt.close()
 
     # fig9: residual vs disorder_fraction
@@ -83,8 +97,8 @@ def main():
         plt.xlabel('Disorder Fraction')
         plt.ylabel('Residual (length+family adjusted bits/res)')
         plt.tight_layout()
-        plt.savefig('results/figures/fig9_residual_vs_disorder_fraction.png', dpi=300)
-        plt.savefig('results/figures/fig9_residual_vs_disorder_fraction.pdf')
+        plt.savefig(f'{out_fig_prefix}9_residual_vs_disorder_fraction.png', dpi=300)
+        plt.savefig(f'{out_fig_prefix}9_residual_vs_disorder_fraction.pdf')
         plt.close()
 
     # fig10: correlation matrix
@@ -100,8 +114,8 @@ def main():
         sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", vmin=-1, vmax=1, center=0)
         plt.title('Spearman Correlation Matrix')
         plt.tight_layout()
-        plt.savefig('results/figures/fig10_correlation_matrix.png', dpi=300)
-        plt.savefig('results/figures/fig10_correlation_matrix.pdf')
+        plt.savefig(f'{out_fig_prefix}10_correlation_matrix.png', dpi=300)
+        plt.savefig(f'{out_fig_prefix}10_correlation_matrix.pdf')
         plt.close()
 
     print("Done.")

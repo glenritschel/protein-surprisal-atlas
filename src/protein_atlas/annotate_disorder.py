@@ -55,24 +55,46 @@ def get_disorder_fractions(df: pd.DataFrame, max_workers: int = 4) -> pd.DataFra
     df = df.copy()
     cache = load_cache()
 
-    results = []
-
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     import tqdm
+    import threading
 
-    to_fetch = []
-    for uid in df['uniprot_id']:
+    cache_lock = threading.Lock()
+
+    def save_cache_safely():
+        with cache_lock:
+            save_cache(cache)
+
+    def fetch_and_cache(uid):
+        if uid in cache:
+            return uid, cache[uid]
+        res = fetch_disorder_fraction(uid)
+        with cache_lock:
+            cache[uid] = res
+        return uid, res
+
+    to_fetch = df['uniprot_id'].tolist()
+
+    missing_count_fetch = 0
+    for uid in to_fetch:
         if uid not in cache:
-            to_fetch.append(uid)
+            missing_count_fetch += 1
 
-    if to_fetch:
-        print(f"Fetching disorder fraction for {len(to_fetch)} proteins...")
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            fetched_results = list(tqdm.tqdm(executor.map(fetch_disorder_fraction, to_fetch), total=len(to_fetch)))
+    if missing_count_fetch > 0:
+        print(f"Fetching disorder fraction for {missing_count_fetch} missing proteins out of {len(to_fetch)}...")
+    else:
+        print(f"All {len(to_fetch)} proteins found in disorder cache.")
 
-        for uid, val in zip(to_fetch, fetched_results):
-            cache[uid] = val
-        save_cache(cache)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(fetch_and_cache, uid): uid for uid in to_fetch if uid not in cache}
+        for i, future in enumerate(tqdm.tqdm(as_completed(futures), total=len(futures))):
+            future.result() # result is already saved to cache
+            # Save cache periodically to survive interruption
+            if i > 0 and i % 100 == 0:
+                save_cache_safely()
+
+    # Final save
+    save_cache_safely()
 
     df['disorder_fraction'] = df['uniprot_id'].map(cache)
 

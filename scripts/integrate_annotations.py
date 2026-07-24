@@ -6,16 +6,44 @@ from src.protein_atlas.integrate_depmap import fetch_depmap_data, process_depmap
 from src.protein_atlas.annotate_disorder import get_disorder_fractions
 from src.protein_atlas.annotate_lowcomplexity import compute_low_complexity_fraction
 
+import argparse
+import glob
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scope", choices=["pilot", "proteome"], default="pilot", help="Scope of the integration")
+    args = parser.parse_args()
+
     with open('config.yaml', 'r') as f:
         config = yaml.safe_load(f)
 
-    input_file = "results/tables/pilot_protein_scores_sampled_mask.parquet"
-    if not os.path.exists(input_file):
-        raise FileNotFoundError(f"{input_file} not found.")
+    if args.scope == "pilot":
+        input_file = "results/tables/pilot_protein_scores_sampled_mask.parquet"
+        if not os.path.exists(input_file):
+            raise FileNotFoundError(f"{input_file} not found.")
+        print(f"Loading {input_file}...")
+        df = pd.read_parquet(input_file)
+        output_file = "results/tables/pilot_annotated.parquet"
+        report_file = "results/reports/annotation_coverage.md"
+    else:
+        input_dir = "results/tables/proteome_protein_scores_sampled_mask/"
+        files = glob.glob(os.path.join(input_dir, "part-*.parquet"))
+        if not files:
+            raise FileNotFoundError(f"No part-*.parquet files found in {input_dir}")
+        print(f"Loading {len(files)} chunks from {input_dir}...")
+        dfs = []
+        for f in files:
+            # For proteome, we don't load the massive residue partition files here, just the protein level table
+            dfs.append(pd.read_parquet(f))
+        df = pd.concat(dfs, ignore_index=True)
+        output_file = "results/tables/proteome_annotated.parquet"
+        report_file = "results/reports/proteome_annotation_coverage.md"
 
-    print(f"Loading {input_file}...")
-    df = pd.read_parquet(input_file)
+    from src.protein_atlas.family_size import add_family_sizes
+
+    # 0. Family Size
+    print("Adding family sizes...")
+    df = add_family_sizes(df, max_workers=4)
 
     # 1. Low complexity
     print("Computing low complexity fraction...")
@@ -43,14 +71,12 @@ def main():
     df = join_depmap_to_pilot(df, depmap_df)
 
     # Write output
-    output_file = "results/tables/pilot_annotated.parquet"
     print(f"Writing annotated dataset to {output_file}...")
     df.to_parquet(output_file)
 
     # Generate coverage report
     print("Generating coverage report...")
     os.makedirs("results/reports", exist_ok=True)
-    report_file = "results/reports/annotation_coverage.md"
     n_total = len(df)
 
     lowcomp_present = df['low_complexity_fraction'].notna().sum()

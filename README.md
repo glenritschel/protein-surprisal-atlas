@@ -41,6 +41,25 @@ pilot** and appear only at proteome scale — a reminder that at large n, signif
 through effect size, not the p-value. Full interpretation and the pilot comparison are in
 [`docs/RESULTS.md`](docs/RESULTS.md).
 
+## Companion analysis: delta-surprisal for variant effect
+
+The result above concerns *wild-type* per-residue surprisal. A separate question is whether the
+*mutation-effect* form — **delta-surprisal**, `surprisal(mut) − surprisal(wt)` at a masked position —
+carries signal the wild-type quantity does not. It does, with a qualified, honest answer:
+
+- **It predicts pathogenicity, but only at scale.** On 2,145 balanced ClinVar missense variants across
+  eight cancer-predisposition genes, delta-surprisal separates pathogenic from benign at
+  **AUROC 0.889** with ESM-2 650M, far above a −BLOSUM62 baseline (0.694). With the 35M model used for
+  the main atlas it is no better than that baseline (pooled 0.70; TP53 0.48). The small-model result is
+  a false negative.
+- **It is dominated by AlphaMissense.** On the identical variants AlphaMissense scores **0.955** and
+  beats delta-surprisal on every gene; a rank-average of the two (0.940) falls *below* AlphaMissense
+  alone, so delta-surprisal adds no orthogonal signal.
+
+Delta-surprisal reproduces known ESM zero-shot variant-effect performance and confirms the signal is
+real, but it is not a new or competitive predictor. Full method, per-gene table, and the reproducible
+script are in [`variant_effect/`](variant_effect/).
+
 ## Quickstart
 
 The pipeline runs as three Colab notebooks (see [`notebooks/README.md`](notebooks/README.md)):
@@ -61,6 +80,7 @@ notebooks/           Colab notebooks for the full pipeline
 docs/                METHODS.md (methodology) and RESULTS.md (findings + limitations)
 tests/               unit + integration tests
 results/             figures / reports / summary tables (large data tables are gitignored)
+variant_effect/      delta-surprisal variant-effect companion analysis (script + results)
 ```
 
 ## Data sources
@@ -71,9 +91,10 @@ URLs, versions, and checksums are recorded in the pipeline's provenance. See `do
 
 ## Limitations (brief)
 
-Single model (ESM-2 35M); the disorder association is partly convergent validity (disorder predictors
-and protein language models both learn from evolutionary conservation); associations are
-cross-sectional; annotation coverage is partial (~87–100%). Full list in `docs/RESULTS.md`.
+The proteome atlas uses a single model (ESM-2 35M); the `variant_effect/` companion additionally uses
+650M. The disorder association is partly convergent validity (disorder predictors and protein language
+models both learn from evolutionary conservation); associations are cross-sectional; annotation
+coverage is partial (~87–100%). Full list in `docs/RESULTS.md`.
 
 ## Citation
 
